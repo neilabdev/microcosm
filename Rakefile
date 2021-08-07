@@ -9,4 +9,4 @@ end
 
 task :default => :test
 
-import "./lib/tasks/database.rake"
+import "./lib/microcosm/tasks/database.rake"

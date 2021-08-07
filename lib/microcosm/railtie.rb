@@ -1,4 +1,5 @@
 require 'rails/railtie'
+require 'rails'
 
 module Microcosm
   class Railtie < Rails::Railtie
