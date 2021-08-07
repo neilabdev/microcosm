@@ -1,3 +1,4 @@
+require 'activerecord-import'
 
 module Microcosm
   class Database
