@@ -29,4 +29,5 @@ Gem::Specification.new do |s|
   s.add_dependency 'actionpack', '>= 5.0'
   s.add_dependency 'activemodel', '>= 5.0'
   s.add_dependency "railties", ">= 4.1.0"
+  s.add_dependency 'activerecord-import'
 end
