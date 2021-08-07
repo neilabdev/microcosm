@@ -31,7 +31,11 @@ module Microcosm
       deep_resolve = lambda { |klazzees, resolved|
         for klazz in klazzees do
           for parent in mappings[klazz.name][:belongs_to]
-            deep_resolve.call([parent], resolved) unless resolved.include?(parent)
+            is_resolved =  resolved.include?(parent)
+            unless is_resolved then
+              resolved.push(klazz)
+              deep_resolve.call([parent], resolved)
+            end
           end
           resolved.push(klazz) unless resolved.include?(klazz)
         end
