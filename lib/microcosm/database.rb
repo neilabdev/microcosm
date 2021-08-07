@@ -48,6 +48,8 @@ module Microcosm
         end
 
         row.class.send(:reflect_on_all_associations,:has_many).each do |association|
+          puts "class: #{row.class.name} retrieving associations:#{association.name} with limit: #{options[:limit]}" if options[:verbose]
+
           items = row.send(association.name).limit(options[:limit])
           items.each do |i|
             puts "class: #{i.class.name} id:#{i.id} has_many:#{association.name}" if options[:verbose]
