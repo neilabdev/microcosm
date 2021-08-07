@@ -47,6 +47,13 @@ module Microcosm
           export(item,dataCache,options)
         end
 
+        row.class.send(:reflect_on_all_associations,:has_one).each do |association|
+          item = row.send(association.name)
+          next unless item.present?
+          puts "class: #{item.class.name} id:#{item.id} has_one:#{association.name}" if options[:verbose]
+          export(item,dataCache,options)
+        end
+
         row.class.send(:reflect_on_all_associations,:has_many).each do |association|
           puts "class: #{row.class.name} retrieving associations:#{association.name} with limit: #{options[:limit]}" if options[:verbose]
 
