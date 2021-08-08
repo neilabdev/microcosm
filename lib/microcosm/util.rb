@@ -28,13 +28,15 @@ module Microcosm
       unsorted_descendants = ApplicationRecord.descendants
       mappings = Hash[unsorted_descendants.collect { |d| [d.name, make_mapping.call(d)] }]
       resolved_dependencies = []
-      deep_resolve = lambda { |klazzees, resolved|
+      stacked_dependencies = []
+      deep_resolve = lambda { |klazzees, resolved, stacked|
         for klazz in klazzees do
           for parent in mappings[klazz.name][:belongs_to]
-            is_resolved =  resolved.include?(parent)
+            is_resolved =  resolved.include?(parent) || stacked.include?(parent)
             unless is_resolved then
-              resolved.push(klazz)
+              stacked.push(parent)
               deep_resolve.call([parent], resolved)
+              stacked.pop
             end
           end
           resolved.push(klazz) unless resolved.include?(klazz)
@@ -42,7 +44,7 @@ module Microcosm
         resolved
       }
 
-      resolved_descendants = deep_resolve.call(unsorted_descendants, resolved_dependencies)
+      resolved_descendants = deep_resolve.call(unsorted_descendants, resolved_dependencies,stacked_dependencies)
 
       options[:table_names] ?
           resolved_descendants.collect { |t| t.table_name } :
