@@ -35,7 +35,7 @@ module Microcosm
             is_resolved =  resolved.include?(parent) || stacked.include?(parent)
             unless is_resolved then
               stacked.push(parent)
-              deep_resolve.call([parent], resolved)
+              deep_resolve.call([parent], resolved,stacked)
               stacked.pop
             end
           end
