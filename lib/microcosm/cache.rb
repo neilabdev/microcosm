@@ -45,9 +45,6 @@ module Microcosm
       data[object_class]&.fetch(object_id,nil)
     end
 
-    def []=(key,val)
-    end
-
     def <<(object)
       add(object)
     end
