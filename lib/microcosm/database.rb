@@ -28,7 +28,7 @@ module Microcosm
       }.merge(params)
       index = options[:index] || 0
       objects = args.collect { |r|
-        next r.limit(options[:limit]) if (r.is_a?(Class) && r.ancestors.include?(ApplicationRecord)) # Class objc
+        next r.limit(options[:limit]) if (r.is_a?(Class) && r.ancestors.include?(ApplicationRecord) && !r.abstract_class) # Class objc
         next r if r.is_a?(ApplicationRecord) # object is active record
         next r.select {|rr| rr.is_a?(ApplicationRecord)} if r.is_a?(Array) # [object1,object2] array of records
       }.flatten.select {|r| r.present?}
