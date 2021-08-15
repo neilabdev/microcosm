@@ -28,9 +28,15 @@ module Microcosm
       }.merge(params)
       index = options[:index] || 0
       objects = args.collect { |r|
-        next r.limit(options[:limit]) if (r.is_a?(Class) && r.ancestors.include?(ApplicationRecord) && !r.abstract_class) # Class objc
+        begin
+          next r.limit(options[:limit]).to_a
+        rescue  Exception => e
+          puts "failed: loading class: #{r.is_a?(Class) ? r.name: r } because: \"#{e.message.split("\n").collect{|t|t.strip}.select{|s|s.present?}.join("\\n")}\""   if options[:verbose]
+          next nil
+        end if (r.is_a?(Class) && r.ancestors.include?(ApplicationRecord) && !r.abstract_class) # Class objc
+
         next r if r.is_a?(ApplicationRecord) # object is active record
-        next r.select {|rr| rr.is_a?(ApplicationRecord)} if r.is_a?(Array) # [object1,object2] array of records
+        next r.select {|rr| rr.is_a?(ApplicationRecord) } if r.is_a?(Array) # [object1,object2] array of records
       }.flatten.select {|r| r.present?}
 
       dataCache = args.select {|c| c.is_a?(Cache)}.first || self.cache
@@ -41,27 +47,39 @@ module Microcosm
         next if dataCache[row].present?
         puts "BEGIN: serializing class: #{row.class.name} id: #{row.id}" if options[:verbose]
         dataCache << row
+
         row.class.send(:reflect_on_all_associations,:belongs_to).each do |association|
-          item = row.send(association.name)
-          next unless item.present?
-          puts "class: #{item.class.name} id:#{item.id} belongs_to:#{association.name}" if options[:verbose]
-          export(item,dataCache,options)
+          begin
+            item = row.send(association.name)
+            next unless item.present?
+            puts "class: #{item.class.name} id:#{item.id} belongs_to:#{association.name}" if options[:verbose]
+            export(item,dataCache,options)
+          rescue Exception => e
+            puts "failed: class: #{row.class.name}  belongs_to:#{association.name} because: #{e.message}\n\t\t#{e.backtrace.join}"  if options[:verbose]
+          end
         end
 
         row.class.send(:reflect_on_all_associations,:has_one).each do |association|
-          item = row.send(association.name)
-          next unless item.present?
-          puts "class: #{item.class.name} id:#{item.id} has_one:#{association.name}" if options[:verbose]
-          export(item,dataCache,options)
+          begin
+            item = row.send(association.name)
+            next unless item.present?
+            puts "class: #{item.class.name} id:#{item.id} has_one:#{association.name}" if options[:verbose]
+            export(item,dataCache,options)
+          rescue Exception => e
+            puts "failed: class: #{row.class.name} has_one:#{association.name} because: #{e.message}\n\t\t#{e.backtrace.join}"  if options[:verbose]
+          end
         end
 
         row.class.send(:reflect_on_all_associations,:has_many).each do |association|
-          puts "class: #{row.class.name} retrieving associations:#{association.name} with limit: #{options[:limit]}" if options[:verbose]
-
-          items = row.send(association.name).limit(options[:limit])
-          items.each do |i|
-            puts "class: #{i.class.name} id:#{i.id} has_many:#{association.name}" if options[:verbose]
-            export(i,dataCache,options)
+          begin
+            items = row.send(association.name).limit(options[:limit])
+            puts "class: #{row.class.name} retrieving associations:#{association.name} with limit: #{options[:limit]}" if options[:verbose]
+            items.each do |i|
+              puts "class: #{i.class.name} id:#{i.id} has_many:#{association.name}" if options[:verbose]
+              export(i,dataCache,options)
+            end
+          rescue  Exception => e
+            puts "failed: class: #{row.class.name} has_many:#{association.name} because: #{e.message}\n\t\t#{e.backtrace.join}"  if options[:verbose]
           end
         end
         puts "END: serializing class: #{row.class} id: #{row.id} seq: #{index}" if options[:verbose]
