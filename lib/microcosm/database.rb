@@ -13,6 +13,10 @@ module Microcosm
       @instance ||= Rails.env.test? ? nil : new
     end
 
+    def fmt_exception(exception,backtrace:nil)
+      exception.message.split("\n").collect{|t|t.strip}.select{|s|s.present?}.join("\\n")
+    end
+
     def self.export(*args)
       self.instance.export(*args)
     end
@@ -31,7 +35,7 @@ module Microcosm
         begin
           next r.limit(options[:limit]).to_a
         rescue  Exception => e
-          puts "failed: loading class: #{r.is_a?(Class) ? r.name: r } because: \"#{e.message.split("\n").collect{|t|t.strip}.select{|s|s.present?}.join("\\n")}\""   if options[:verbose]
+          puts "failed: loading class: #{r.is_a?(Class) ? r.name: r } because: \"#{fmt_exception(e)}\""   if options[:verbose]
           next nil
         end if (r.is_a?(Class) && r.ancestors.include?(ApplicationRecord) && !r.abstract_class) # Class objc
 
@@ -55,7 +59,7 @@ module Microcosm
             puts "class: #{item.class.name} id:#{item.id} belongs_to:#{association.name}" if options[:verbose]
             export(item,dataCache,options)
           rescue Exception => e
-            puts "failed: class: #{row.class.name}  belongs_to:#{association.name} because: #{e.message}\n\t\t#{e.backtrace.join}"  if options[:verbose]
+            puts "failed: class: #{row.class.name}  belongs_to:#{association.name} because: #{fmt_exception(e)}" if options[:verbose]
           end
         end
 
@@ -66,7 +70,7 @@ module Microcosm
             puts "class: #{item.class.name} id:#{item.id} has_one:#{association.name}" if options[:verbose]
             export(item,dataCache,options)
           rescue Exception => e
-            puts "failed: class: #{row.class.name} has_one:#{association.name} because: #{e.message}\n\t\t#{e.backtrace.join}"  if options[:verbose]
+            puts "failed: class: #{row.class.name} has_one:#{association.name} because: #{fmt_exception(e)}"  if options[:verbose]
           end
         end
 
@@ -79,7 +83,7 @@ module Microcosm
               export(i,dataCache,options)
             end
           rescue  Exception => e
-            puts "failed: class: #{row.class.name} has_many:#{association.name} because: #{e.message}\n\t\t#{e.backtrace.join}"  if options[:verbose]
+            puts "failed: class: #{row.class.name} has_many:#{association.name} because: #{fmt_exception(e)}"  if options[:verbose]
           end
         end
         puts "END: serializing class: #{row.class} id: #{row.id} seq: #{index}" if options[:verbose]
@@ -143,6 +147,12 @@ module Microcosm
         import_items.call(items)
       end
       puts "DONE" if options[:verbose]
+    end
+
+    private
+
+    def fmt_exception(exception,backtrace:nil)
+      exception.message.split("\n").collect{|t|t.strip}.select{|s|s.present?}.join("\\n")
     end
   end
 
