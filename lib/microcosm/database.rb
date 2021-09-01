@@ -27,19 +27,23 @@ module Microcosm
         limit: 10000,
         verbose: true,
         serialize: true,
+        exclude: [],
         path: File.join(Rails.root,'db'),
-        index: 0
+        index: 0,
+        depth: 0
       }.merge(params)
       index = options[:index] || 0
+      excluded_tables = options[:exclude]
       objects = args.collect { |r|
+        is_activerecord_model = r.is_a?(Class) && r.ancestors.include?(ApplicationRecord)
+        next nil if is_activerecord_model && excluded_tables.include?(r.table_name)
         begin
           next r.limit(options[:limit]).to_a
         rescue  Exception => e
           puts "failed: loading class: #{r.is_a?(Class) ? r.name: r } because: \"#{fmt_exception(e)}\""   if options[:verbose]
           next nil
-        end if (r.is_a?(Class) && r.ancestors.include?(ApplicationRecord) && !r.abstract_class) # Class objc
-
-        next r if r.is_a?(ApplicationRecord) # object is active record
+        end if (is_activerecord_model && !r.abstract_class) # Class objc
+        next r if is_activerecord_model # object is active record
         next r.select {|rr| rr.is_a?(ApplicationRecord) } if r.is_a?(Array) # [object1,object2] array of records
       }.flatten.select {|r| r.present?}
 

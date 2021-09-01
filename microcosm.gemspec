@@ -30,4 +30,5 @@ Gem::Specification.new do |s|
   s.add_dependency 'activemodel', '>= 5.0'
   s.add_dependency "railties", ">= 4.1.0"
   s.add_dependency 'activerecord-import'
+  s.add_dependency "scenic", ">= 1.5.1" # TODO:: Add to specific postgres gem
 end

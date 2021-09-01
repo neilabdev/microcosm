@@ -25,8 +25,11 @@ namespace :db do
       resources = ENV['ID'].present? && klazz.present? ? #
                     klazz.find(ENV['ID'].split(',').collect { |i| i.to_i }) :
                     (export_all ? ApplicationRecord.descendants : [klazz])
-
-      Microcosm::Database.export(*resources, path: path, verbose: verbose, limit: limit)
+      excluded_tables = ENV["EXCLUDE_TABLES"].to_s.split(",")
+      excluded_file = ENV["EXCLUDE_FILE"].present?? File.read(ENV["EXCLUDE_FILE"]).split : []
+      excludes = excluded_tables + excluded_file
+      depth = ENV['DEPTH'].to_i
+      Microcosm::Database.export(*resources, path: path, verbose: verbose,  exclude: excludes, depth: depth, limit: limit)
     end
 
     desc "Reset database to db:schema:load in preparation for :import_yml"
@@ -90,6 +93,12 @@ namespace :db do
           ActiveRecord::Base.connection.reset_pk_sequence!(t)
         end
       end
+      desc "List tables views (for excluding)"
+      task print_views: [:environment] do
+        puts Scenic.database.views.collect {|t| t.name }.uniq.sort
+      end
+
+
     end
   end
 end
