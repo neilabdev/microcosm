@@ -39,7 +39,7 @@ module Microcosm
       stacked_dependencies = []
       deep_resolve = lambda { |klazzees, resolved, stacked|
         for klazz in klazzees.flatten do
-          for parent in (mappings.dig(klazz.name,:belongs_to) || []) # [klazz.name][:belongs_to]
+          for parent in (mappings.dig(klazz.name,:belongs_to) || []).flatten.uniq # [klazz.name][:belongs_to]
             is_resolved =  resolved.include?(parent) || stacked.include?(parent)
             unless is_resolved then
               stacked.push(parent)
