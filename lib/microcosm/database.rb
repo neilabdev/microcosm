@@ -37,6 +37,7 @@ module Microcosm
       objects = args.collect { |r|
         is_activerecord_model = r.is_a?(Class) && r.ancestors.include?(ApplicationRecord)
         next nil if is_activerecord_model && excluded_tables.include?(r.table_name)
+        next nil if r.respond_to?(:abstract_class) && r.abstract_class
         begin
           next r.limit(options[:limit]).to_a
         rescue  Exception => e
@@ -44,13 +45,19 @@ module Microcosm
           next nil
         end if (is_activerecord_model && !r.abstract_class) # Class objc
         next r if is_activerecord_model # object is active record
-        next r.select {|rr| rr.is_a?(ApplicationRecord) } if r.is_a?(Array) # [object1,object2] array of records
-      }.flatten.select {|r| r.present?}
+        next r.select {|rr| rr.ancestors.include?(ApplicationRecord) && !rr.abstract_class } if r.is_a?(Array) # [object1,object2] array of records
+      }.flatten.select {|r| r.respond_to?(:abstract_class) && r.abstract_class ? false :r.present?}
 
       dataCache = args.select {|c| c.is_a?(Cache)}.first || self.cache
       options[:index] += 1
 
       objects.each do |row|
+
+        if row.respond_to?(:abstract_class) && row.abstract_class then
+          puts "BEGIN: skipping class: #{row.class.name} because it is abstract" if options[:verbose]
+          next
+        end
+
         # serialize row
         next if dataCache[row].present?
         puts "BEGIN: serializing class: #{row.class.name} id: #{row.id}" if options[:verbose]
