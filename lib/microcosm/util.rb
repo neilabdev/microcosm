@@ -7,7 +7,7 @@ module Microcosm
       }.merge(params)
 
       Rails.application.eager_load!
-      class_cache = ApplicationRecord.descendants.collect {|c| [c.name,c]}.to_h
+      class_cache = ActiveRecord::Base.descendants.collect {|c| [c.name,c]}.to_h
       children = {}
       make_mapping = lambda { |klazz|
         {
@@ -33,7 +33,7 @@ module Microcosm
         }
       }
 
-      unsorted_descendants = ApplicationRecord.descendants
+      unsorted_descendants = ActiveRecord::Base.descendants
       mappings = Hash[unsorted_descendants.collect { |d| [d.name, make_mapping.call(d)] }   ]
       resolved_dependencies = []
       stacked_dependencies = []

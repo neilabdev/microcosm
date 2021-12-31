@@ -33,9 +33,13 @@ module Microcosm
       }.merge(params)
 
       table_names = Microcosm::Util.models(table_names:true)
-
+      # FIXME: sometimes table_names doesn't contain all keys
       data.keys.sort {|t1,t2|
-        table_names.index(t1) <=> table_names.index(t2)
+        (a,b) = [ table_names.index(t1), table_names.index(t2)]
+        next a <=> b unless a.nil? || b.nil?
+        next -1 if b.nil?
+        next 1 if a.nil?
+        0
       }.each_with_index do |r,i|
         filename = File.absolute_path(File.join(options[:path],"%03d_#{r}.yml" % [i]),Rails.root)
         puts "SAVING table_name: #{r} to file: #{filename}" if options[:verbose]
