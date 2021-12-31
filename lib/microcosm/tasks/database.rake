@@ -16,7 +16,7 @@ namespace :db do
     desc "Export Database Graph to YML files using all associated Models"
     task export: [:environment] do
       Rails.application.eager_load!
-      klazz_name = ENV['CLASS'] or abort "usage: rake db:microcosm:export CLASS=<Model|all> [ ID=<Model.id> LIMIT=<num> DIR=/path/to/export/dir ]"
+      klazz_name = ENV['CLASS'] or abort "usage: rake db:microcosm:export CLASS=<Model|all> [ ID=<Model.id> LIMIT=<num> DIR=/path/to/export/dir ] [ EXCLUDE_FILE=/path/to/file ] [ EXCLUDE_TABLES=table1,table2 ]"
       export_all = klazz_name == 'all'
       limit = ENV['LIMIT'] || 500
       path = ENV['DIR'] || Rails.root
@@ -24,7 +24,7 @@ namespace :db do
       klazz = Object.const_get(klazz_name) unless export_all
       resources = ENV['ID'].present? && klazz.present? ? #
                     klazz.find(ENV['ID'].split(',').collect { |i| i.to_i }) :
-                    (export_all ? ApplicationRecord.descendants : [klazz])
+                    (export_all ? ActiveRecord::Base.descendants : [klazz])
       excluded_tables = ENV["EXCLUDE_TABLES"].to_s.split(",")
       excluded_file = ENV["EXCLUDE_FILE"].present?? File.read(ENV["EXCLUDE_FILE"]).split : []
       excludes = excluded_tables + excluded_file
@@ -93,12 +93,11 @@ namespace :db do
           ActiveRecord::Base.connection.reset_pk_sequence!(t)
         end
       end
+
       desc "List tables views (for excluding)"
       task print_views: [:environment] do
         puts Scenic.database.views.collect {|t| t.name }.uniq.sort
       end
-
-
     end
   end
 end

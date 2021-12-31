@@ -21,8 +21,7 @@ module Microcosm
       self.instance.export(*args)
     end
 
-    def export(*args)
-      params = args[-1].is_a?(Hash) ? args[-1] : {}
+    def export(*args,**kwargs)
       options = {
         limit: 10000,
         verbose: true,
@@ -31,13 +30,14 @@ module Microcosm
         path: File.join(Rails.root,'db'),
         index: 0,
         depth: 0
-      }.merge(params)
+      }.merge(kwargs.select {|k,v| v.present?})
       index = options[:index] || 0
       excluded_tables = options[:exclude]
       objects = args.collect { |r|
-        is_activerecord_model = r.is_a?(Class) && r.ancestors.include?(ApplicationRecord)
+        is_activerecord_model = r.is_a?(Class) && r.ancestors.include?(ActiveRecord::Base)
         next nil if is_activerecord_model && excluded_tables.include?(r.table_name)
         next nil if r.respond_to?(:abstract_class) && r.abstract_class
+
         begin
           next r.limit(options[:limit]).to_a
         rescue  Exception => e
@@ -45,19 +45,13 @@ module Microcosm
           next nil
         end if (is_activerecord_model && !r.abstract_class) # Class objc
         next r if is_activerecord_model # object is active record
-        next r.select {|rr| rr.ancestors.include?(ApplicationRecord) && !rr.abstract_class } if r.is_a?(Array) # [object1,object2] array of records
+        next r.select {|rr| rr.ancestors.include?(ActiveRecord::Base) && !rr.abstract_class } if r.is_a?(Array) # [object1,object2] array of records
       }.flatten.select {|r| r.respond_to?(:abstract_class) && r.abstract_class ? false :r.present?}
 
       dataCache = args.select {|c| c.is_a?(Cache)}.first || self.cache
       options[:index] += 1
 
       objects.each do |row|
-
-        if row.respond_to?(:abstract_class) && row.abstract_class then
-          puts "BEGIN: skipping class: #{row.class.name} because it is abstract" if options[:verbose]
-          next
-        end
-
         # serialize row
         next if dataCache[row].present?
         puts "BEGIN: serializing class: #{row.class.name} id: #{row.id}" if options[:verbose]
@@ -109,8 +103,7 @@ module Microcosm
       self.instance.import(*args)
     end
 
-    def import(*args)
-      params = args[-1].is_a?(Hash) ? args[-1] : {}
+    def import(*args,**kwargs)
       options = {
         path: File.join(Rails.root,"db"),
         verbose: true,
@@ -119,7 +112,8 @@ module Microcosm
         batch_size: 100,
         all_or_none: false,
         raise_error: true
-      }.merge(params.select {|k,v| v.present?})
+      }.merge(kwargs.select {|k,v| v.present?})
+
       import_path = File.join(options[:path],options[:file])
       import_items = lambda {|items|
         first = items&.first

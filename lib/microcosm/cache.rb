@@ -8,11 +8,16 @@ module Microcosm
 
     def initialize
       super
+      @errors ||= {}
       @data ||= {}
     end
 
+    def addError(object,message: nil)
+
+    end
+
     def add(object)
-      if object.is_a?(ApplicationRecord)
+      if object.is_a?(ActiveRecord::Base)
         table_name = object.class.table_name
         data[table_name]||={}
         data[table_name][object.id] = object
@@ -39,9 +44,9 @@ module Microcosm
     end
 
     def [](key)
-      return data[key]  unless key.is_a?(ApplicationRecord)
-      object_id = key.is_a?(ApplicationRecord) ? key.id : nil
-      object_class = key.is_a?(ApplicationRecord) ? key.class.table_name : nil
+      return data[key]  unless key.is_a?(ActiveRecord::Base)
+      object_id = key.is_a?(ActiveRecord::Base) ? key.id : nil
+      object_class = key.is_a?(ActiveRecord::Base) ? key.class.table_name : nil
       data[object_class]&.fetch(object_id,nil)
     end
 
