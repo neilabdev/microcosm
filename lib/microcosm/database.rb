@@ -44,7 +44,7 @@ module Microcosm
           puts "failed: loading class: #{r.is_a?(Class) ? r.name: r } because: \"#{fmt_exception(e)}\""   if options[:verbose]
           next nil
         end if (is_activerecord_model && !r.abstract_class) # Class objc
-        next r if is_activerecord_model # object is active record
+        next r if r.is_a?(ActiveRecord::Base) # object is active record
         next r.select {|rr| rr.ancestors.include?(ActiveRecord::Base) && !rr.abstract_class } if r.is_a?(Array) # [object1,object2] array of records
       }.flatten.select {|r| r.respond_to?(:abstract_class) && r.abstract_class ? false :r.present?}
 
