@@ -39,6 +39,17 @@ namespace :db do
       Rake::Task['db:schema:load'].execute
     end
 
+    desc "Print Dependency Graph"
+    task print_graph: [:environment] do
+
+      table_names = Microcosm::Util.models(table_names:true)
+      table_names.each_with_index do |r,i|
+        filename = ("%03d_#{r}.yml" % [i])
+        puts "table_name: #{r} to file: #{filename}"
+      end
+    end
+
+
     desc 'Convert development DB to Rails test fixtures'
     task to_fixtures: :environment do
       TABLES_TO_SKIP = %w[ar_internal_metadata schema_migrations schema_info ].freeze

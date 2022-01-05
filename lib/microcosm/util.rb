@@ -8,15 +8,17 @@ module Microcosm
 
       Rails.application.eager_load!
       class_cache = ActiveRecord::Base.descendants.collect {|c| [c.name,c]}.to_h
-      children = {}
+      children_of = {} #children_of
+      parents_of = {} #parents_of
       make_mapping = lambda { |klazz|
         {
           belongs_to: klazz.send(:reflect_on_all_associations, :belongs_to).collect { |r| #child
             next nil if r.options[:polymorphic] #|| r.options[:through]
-
+            next nil if r.class_name == klazz.name
             begin
-              (children[r.class_name] ||= []).push(klazz)
-              # class_cache[r.class_name]
+              (children_of[r.class_name] ||= []).push(klazz)
+              (parents_of[klazz.name] ||= []).push(r.class_name.constantize)
+
             rescue Exception => e
               next nil
             end
@@ -29,34 +31,46 @@ module Microcosm
             end
           }.select { |k| k.present? },
           type: klazz,
-          children: (children[klazz.name] ||= [])
+          children: (children_of[klazz.name] ||= []),
+          parents:  (parents_of[klazz.name] ||= []),
         }
       }
 
-      unsorted_descendants = ActiveRecord::Base.descendants
+      unsorted_descendants = ActiveRecord::Base.descendants - [ApplicationRecord]
       mappings = Hash[unsorted_descendants.collect { |d| [d.name, make_mapping.call(d)] }   ]
       resolved_dependencies = []
       stacked_dependencies = []
       deep_resolve = lambda { |klazzees, resolved, stacked|
-        for klazz in klazzees.flatten do
-          for parent in (mappings.dig(klazz.name,:belongs_to) || []).flatten.uniq # [klazz.name][:belongs_to]
+        resolved ||= []
+        for klazz in Array.wrap(klazzees).flatten do
+          klazz_parents = (mappings.dig(klazz.name,:belongs_to) || []).flatten.uniq - [klazz]
+          for parent in klazz_parents
             is_resolved =  resolved.include?(parent) || stacked.include?(parent)
             unless is_resolved then
               stacked.push(parent)
-              deep_resolve.call([parent], resolved,stacked)
+              deep_resolve.call(parent, resolved,stacked)
               stacked.pop
             end
-          end
+          end # for parent
           resolved.push(klazz) unless resolved.include?(klazz)
-        end
+        end # for klazz
         resolved
       }
 
-      resolved_descendants = deep_resolve.call(unsorted_descendants, resolved_dependencies,stacked_dependencies)
+      loop do
+        unsorted_class = unsorted_descendants.pop
 
+        deep_resolved = deep_resolve.call(unsorted_class, nil,stacked_dependencies)
+
+        resolved_dependencies.append deep_resolved
+
+        break if  unsorted_descendants.blank?
+      end
+
+      sorted_dependencies = resolved_dependencies.sort_by { |a| a.size }.reverse.flatten.uniq
       options[:table_names] ?
-        resolved_descendants.collect { |t| t.table_name } :
-        resolved_descendants
+        sorted_dependencies.collect { |t| t.table_name } :
+        sorted_dependencies
     end
   end
 end
