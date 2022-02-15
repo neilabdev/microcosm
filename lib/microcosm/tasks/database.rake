@@ -16,20 +16,33 @@ namespace :db do
     desc "Export Database Graph to YML files using all associated Models"
     task export: [:environment] do
       Rails.application.eager_load!
-      klazz_name = ENV['CLASS'] or abort "usage: rake db:microcosm:export CLASS=<Model|all> [ ID=<Model.id> LIMIT=<num> DIR=/path/to/export/dir ] [ EXCLUDE_FILE=/path/to/file ] [ EXCLUDE_TABLES=table1,table2 ]"
-      export_all = klazz_name == 'all'
-      limit = ENV['LIMIT'] || 500
+      klazz_criteria = ENV['CLASS'] or abort "usage: rake db:microcosm:export CLASS=<Model|all|Model[1,2,3]> [ LIMIT=<num> DIR=/path/to/export/dir ] [ EXCLUDE_FILE=/path/to/file ] [ EXCLUDE_TABLES=table1,table2 ]"
+      limit = ENV['LIMIT'] || 500 #ID=User[13,34,23]
       path = ENV['DIR'] || Rails.root
       verbose = [1, '1', 'TRUE', 'true'].include? ENV['VERBOSE']
-      klazz = Object.const_get(klazz_name) unless export_all
-      resources = ENV['ID'].present? && klazz.present? ? #
-                    klazz.find(ENV['ID'].split(',').collect { |i| i.to_i }) :
-                    (export_all ? ActiveRecord::Base.descendants : [klazz])
+      resources = proc { |term|
+        parts = term.split(/\|/).collect {|p| p.strip }
+        results = []
+        parts.each do |part|
+          klass_ids_match = part.match(/(\w+)\[(.+)\]/)
+          if klass_ids_match.present?
+            (klass,klass_ids) = [Object.const_get(klass_ids_match[1]),klass_ids_match[2].strip]
+            results.concat klass_ids == "*" ? klass.all : klass.find(klass_ids.split(/,/).collect {|i| i.strip })
+          elsif ['*','all'].include?(term)
+            results.concat ActiveRecord::Base.descendants
+          else # jsut class name
+            klass = Object.const_get(part)
+            results.append klass
+          end
+        end
+        results
+      }.call(klazz_criteria)
+
       excluded_tables = ENV["EXCLUDE_TABLES"].to_s.split(",")
       excluded_file = ENV["EXCLUDE_FILE"].present?? File.read(ENV["EXCLUDE_FILE"]).split : []
       excludes = excluded_tables + excluded_file
       depth = ENV['DEPTH'].to_i
-      Microcosm::Database.export(*resources, path: path, verbose: verbose,  exclude: excludes, depth: depth, limit: limit)
+      Microcosm::Database.export(*resources, path: path, verbose: verbose, exclude: excludes, depth: depth, limit: limit)
     end
 
     desc "Reset database to db:schema:load in preparation for :import_yml"
